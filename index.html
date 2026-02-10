@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>Fedora Package Picker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #0d1117;
+      --bg-card: #151b23;
+      --bg-secondary: #1c2333;
+      --bg-hover: #1e2534;
+      --border: #252d3a;
+      --text: #e0e6ed;
+      --text-muted: #7b8694;
+      --primary: #2f81f7;
+      --primary-hover: #4a93f8;
+      --primary-bg: rgba(47, 129, 247, 0.08);
+      --primary-border: rgba(47, 129, 247, 0.3);
+      --radius: 8px;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+    }
+
+    .header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .header-title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      background: var(--primary);
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .header-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .header-subtitle {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Toolbar ─────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+      max-width: 340px;
+      min-width: 200px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      width: 16px;
+      height: 16px;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 36px;
+      padding: 0 36px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      font-size: 0.875rem;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(47, 129, 247, 0.15);
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      display: none;
+      line-height: 0;
+    }
+
+    .search-clear.visible {
+      display: block;
+    }
+
+    .search-clear:hover {
+      color: var(--text);
+    }
+
+    .search-clear svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .toolbar-stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      display: none;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: var(--primary-bg);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+    }
+
+    .badge.visible {
+      display: inline-flex;
+    }
+
+    .clear-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: color 0.15s;
+    }
+
+    .clear-btn.visible {
+      display: inline-block;
+    }
+
+    .clear-btn:hover {
+      color: var(--text);
+    }
+
+    /* ── Main Content ────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 2rem;
+    }
+
+    .categories {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* ── Category ────────────────────────────── */
+    .category-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .category-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .category-icon {
+      color: var(--primary);
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .category-label {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .category-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .select-all-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: opacity 0.15s;
+    }
+
+    .select-all-btn:hover {
+      opacity: 0.8;
+    }
+
+    /* ── Package Grid ────────────────────────── */
+    .package-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .package-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 500px) {
+      .package-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Package Card ────────────────────────── */
+    .package-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      user-select: none;
+    }
+
+    .package-card:hover {
+      background: var(--bg-hover);
+    }
+
+    .package-card.checked {
+      border-color: var(--primary-border);
+      background: var(--primary-bg);
+    }
+
+    /* Custom checkbox */
+    .pkg-checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 2px solid var(--border);
+      background: transparent;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .package-card.checked .pkg-checkbox {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .pkg-checkbox svg {
+      width: 10px;
+      height: 10px;
+      color: #fff;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .package-card.checked .pkg-checkbox svg {
+      opacity: 1;
+    }
+
+    .pkg-info {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .pkg-name {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .pkg-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .category-count {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* ── Empty State ──────────────────────────── */
+    .empty-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 0;
+      color: var(--text-muted);
+    }
+
+    .empty-state.visible {
+      display: flex;
+    }
+
+    .empty-state svg {
+      width: 32px;
+      height: 32px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state p {
+      font-size: 0.875rem;
+    }
+
+    /* ── Sticky Command Bar ──────────────────── */
+    .command-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(21, 27, 35, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      transform: translateY(100%);
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 100;
+    }
+
+    .command-bar.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .command-bar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .command-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .command-label svg {
+      width: 14px;
+      height: 14px;
+      color: var(--primary);
+    }
+
+    .command-label span {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .command-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .command-output {
+      flex: 1;
+      overflow-x: auto;
+      padding: 12px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .command-output code {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 6px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .copy-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .copy-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Bottom spacer */
+    .bottom-spacer {
+      height: 0;
+      transition: height 0.3s ease;
+    }
+
+    .bottom-spacer.active {
+      height: 120px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-title-row">
+        <div class="header-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        </div>
+        <h1>Fedora Package Picker</h1>
+      </div>
+      <p class="header-subtitle">Select the packages you need and copy the install command.</p>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="search-wrapper">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search packages..." autocomplete="off" />
+          <button class="search-clear" id="searchClear" type="button" aria-label="Clear search">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="toolbar-stats">
+          <span class="badge" id="selectedBadge">0 selected</span>
+          <button class="clear-btn" id="clearAllBtn" type="button">Clear all</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main Content ────────────────────────── -->
+  <main>
+    <div class="categories" id="categoriesContainer"></div>
+    <div class="empty-state" id="emptyState">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <p id="emptyText">No packages found</p>
+    </div>
+    <div class="bottom-spacer" id="bottomSpacer"></div>
+  </main>
+
+  <!-- ── Sticky Command Bar ──────────────────── -->
+  <div class="command-bar" id="commandBar">
+    <div class="command-bar-inner">
+      <div class="command-label">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+        <span>Install Command</span>
+      </div>
+      <div class="command-row">
+        <div class="command-output">
+          <code id="commandText"></code>
+        </div>
+        <button class="copy-btn" id="copyBtn" type="button">
+          <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <svg id="checkIcon" style="display:none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="copyLabel">Copy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Package Data ────────────────────────────
+    const packageCategories = [
+      {
+        id: "terminal",
+        label: "Terminal Tools",
+        description: "Essential command-line utilities and shell enhancements",
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>',
+        packages: [
+          { name: "htop", displayName: "htop", description: "Interactive process viewer" },
+          { name: "tmux", displayName: "tmux", description: "Terminal multiplexer" },
+          { name: "zsh", displayName: "Zsh", description: "Z shell with advanced features" },
+          { name: "fish", displayName: "Fish", description: "Friendly interactive shell" },
+          { name: "neofetch", displayName: "Neofetch", description: "System info script" },
+          { name: "bat", displayName: "bat", description: "Cat clone with syntax highlighting" },
+          { name: "exa", displayName: "exa", description: "Modern replacement for ls" },
+          { name: "ripgrep", displayName: "ripgrep", description: "Fast recursive search tool" },
+          { name: "fd-find", displayName: "fd", description: "Simple and fast file finder" },
+          { name: "fzf", displayName: "fzf", description: "Fuzzy finder for the terminal" },
+          { name: "jq", displayName: "jq", description: "JSON processor for the command line" },
+          { name: "wget", displayName: "wget", description: "Network file downloader" },
+          { name: "curl", displayName: "curl", description: "Transfer data with URLs" },
+          { name: "tree", displayName: "tree", description: "Directory listing in tree format" },
+          { name: "ncdu", displayName: "ncdu", description: "Disk usage analyzer with ncurses" },
+          { name: "ranger", displayName: "Ranger", description: "Console file manager with VI bindings" },
+          { name: "tldr", displayName: "tldr", description: "Simplified man pages" },
+          { name: "screen", displayName: "Screen", description: "Terminal session manager" },
+        ],
+      },
+      {
+        id: "desktop",
+        label: "Desktop Apps",
+        description: "Graphical applications for everyday use",
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>',
+        packages: [
+          { name: "firefox", displayName: "Firefox", description: "Web browser by Mozilla" },
+          { name: "thunderbird", displayName: "Thunderbird", description: "Email client by Mozilla" },
+          { name: "vlc", displayName: "VLC", description: "Multimedia player" },
+          { name: "gimp", displayName: "GIMP", description: "Image editor" },
+          { name: "inkscape", displayName: "Inkscape", description: "Vector graphics editor" },
+          { name: "libreoffice", displayName: "LibreOffice", description: "Office suite" },
+          { name: "blender", displayName: "Blender", description: "3D creation suite" },
+          { name: "obs-studio", displayName: "OBS Studio", description: "Streaming and recording" },
+          { name: "kdenlive", displayName: "Kdenlive", description: "Video editor" },
+          { name: "audacity", displayName: "Audacity", description: "Audio editor" },
+          { name: "transmission", displayName: "Transmission", description: "BitTorrent client" },
+          { name: "filezilla", displayName: "FileZilla", description: "FTP client" },
+          { name: "keepassxc", displayName: "KeePassXC", description: "Password manager" },
+          { name: "flameshot", displayName: "Flameshot", description: "Screenshot tool" },
+          { name: "qbittorrent", displayName: "qBittorrent", description: "BitTorrent client" },
+        ],
+      },
+      {
+        id: "coding",
+        label: "Coding Tools",
+        description: "Development environments, compilers, and programming utilities",
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>',
+        packages: [
+          { name: "git", displayName: "Git", description: "Version control system" },
+          { name: "vim-enhanced", displayName: "Vim", description: "Improved Vi text editor" },
+          { name: "neovim", displayName: "Neovim", description: "Hyperextensible Vim fork" },
+          { name: "emacs", displayName: "Emacs", description: "Extensible text editor" },
+          { name: "gcc", displayName: "GCC", description: "GNU C/C++ compiler" },
+          { name: "clang", displayName: "Clang", description: "C/C++/ObjC compiler" },
+          { name: "python3", displayName: "Python 3", description: "Python interpreter" },
+          { name: "python3-pip", displayName: "pip", description: "Python package manager" },
+          { name: "nodejs", displayName: "Node.js", description: "JavaScript runtime" },
+          { name: "npm", displayName: "npm", description: "Node package manager" },
+          { name: "rust", displayName: "Rust", description: "Rust toolchain via rustup" },
+          { name: "cargo", displayName: "Cargo", description: "Rust package manager" },
+          { name: "golang", displayName: "Go", description: "Go programming language" },
+          { name: "java-latest-openjdk", displayName: "Java (OpenJDK)", description: "Java development kit" },
+          { name: "docker", displayName: "Docker", description: "Container runtime" },
+          { name: "podman", displayName: "Podman", description: "Rootless container engine" },
+          { name: "cmake", displayName: "CMake", description: "Cross-platform build system" },
+          { name: "make", displayName: "Make", description: "GNU build automation" },
+          { name: "gdb", displayName: "GDB", description: "GNU debugger" },
+          { name: "strace", displayName: "strace", description: "System call tracer" },
+          { name: "valgrind", displayName: "Valgrind", description: "Memory debugging tool" },
+        ],
+      },
+    ];
+
+    // ── State ───────────────────────────────────
+    const selected = new Set();
+    let searchQuery = "";
+
+    // ── DOM References ──────────────────────────
+    const categoriesContainer = document.getElementById("categoriesContainer");
+    const emptyState = document.getElementById("emptyState");
+    const emptyText = document.getElementById("emptyText");
+    const commandBar = document.getElementById("commandBar");
+    const commandText = document.getElementById("commandText");
+    const copyBtn = document.getElementById("copyBtn");
+    const copyIcon = document.getElementById("copyIcon");
+    const checkIcon = document.getElementById("checkIcon");
+    const copyLabel = document.getElementById("copyLabel");
+    const searchInput = document.getElementById("searchInput");
+    const searchClear = document.getElementById("searchClear");
+    const selectedBadge = document.getElementById("selectedBadge");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const bottomSpacer = document.getElementById("bottomSpacer");
+
+    // ── Checkmark SVG for checkbox ──────────────
+    const checkSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    // ── Render ──────────────────────────────────
+    function render() {
+      const lower = searchQuery.toLowerCase();
+      let html = "";
+      let hasResults = false;
+
+      for (const category of packageCategories) {
+        const filteredPkgs = lower
+          ? category.packages.filter(
+              (p) =>
+                p.displayName.toLowerCase().includes(lower) ||
+                p.name.toLowerCase().includes(lower) ||
+                p.description.toLowerCase().includes(lower)
+            )
+          : category.packages;
+
+        if (filteredPkgs.length === 0) continue;
+        hasResults = true;
+
+        const allSelected = filteredPkgs.every((p) => selected.has(p.name));
+        const selectedCount = filteredPkgs.filter((p) => selected.has(p.name)).length;
+
+        html += `
+          <section data-category="${category.id}">
+            <div class="category-header">
+              <div class="category-header-left">
+                <span class="category-icon">${category.icon}</span>
+                <div>
+                  <div class="category-label">${category.label}</div>
+                  <div class="category-desc">${category.description}</div>
+                </div>
+              </div>
+              <button class="select-all-btn" data-cat="${category.id}" type="button">
+                ${allSelected ? "Deselect all" : "Select all"}
+              </button>
+            </div>
+            <div class="package-grid">
+        `;
+
+        for (const pkg of filteredPkgs) {
+          const isChecked = selected.has(pkg.name);
+          html += `
+            <div class="package-card${isChecked ? " checked" : ""}" data-pkg="${pkg.name}">
+              <div class="pkg-checkbox">${checkSvg}</div>
+              <div class="pkg-info">
+                <div class="pkg-name">${pkg.displayName}</div>
+                <div class="pkg-desc">${pkg.description}</div>
+              </div>
+            </div>
+          `;
+        }
+
+        html += `</div>`;
+
+        if (selectedCount > 0) {
+          html += `<p class="category-count">${selectedCount} of ${filteredPkgs.length} selected</p>`;
+        }
+
+        html += `</section>`;
+      }
+
+      categoriesContainer.innerHTML = html;
+
+      // Empty state
+      if (hasResults) {
+        emptyState.classList.remove("visible");
+      } else {
+        emptyText.textContent = searchQuery
+          ? `No packages found matching "${searchQuery}"`
+          : "No packages available";
+        emptyState.classList.add("visible");
+      }
+
+      // Command bar
+      updateCommandBar();
+      updateToolbar();
+    }
+
+    function updateCommandBar() {
+      if (selected.size > 0) {
+        const cmd = "sudo dnf install " + Array.from(selected).sort().join(" ");
+        commandText.textContent = cmd;
+        commandBar.classList.add("visible");
+        bottomSpacer.classList.add("active");
+      } else {
+        commandBar.classList.remove("visible");
+        bottomSpacer.classList.remove("active");
+      }
+    }
+
+    function updateToolbar() {
+      if (selected.size > 0) {
+        selectedBadge.textContent = selected.size + " selected";
+        selectedBadge.classList.add("visible");
+        clearAllBtn.classList.add("visible");
+      } else {
+        selectedBadge.classList.remove("visible");
+        clearAllBtn.classList.remove("visible");
+      }
+
+      // Search clear button
+      if (searchQuery) {
+        searchClear.classList.add("visible");
+      } else {
+        searchClear.classList.remove("visible");
+      }
+    }
+
+    // ── Event: Package Card Click ───────────────
+    categoriesContainer.addEventListener("click", function (e) {
+      // Check if a package card was clicked
+      const card = e.target.closest(".package-card");
+      if (card) {
+        const pkg = card.dataset.pkg;
+        if (selected.has(pkg)) {
+          selected.delete(pkg);
+        } else {
+          selected.add(pkg);
+        }
+        render();
+        return;
+      }
+
+      // Check if select-all button was clicked
+      const selectAllBtn = e.target.closest(".select-all-btn");
+      if (selectAllBtn) {
+        const catId = selectAllBtn.dataset.cat;
+        const category = packageCategories.find((c) => c.id === catId);
+        if (!category) return;
+
+        const lower = searchQuery.toLowerCase();
+        const filteredPkgs = lower
+          ? category.packages.filter(
+              (p) =>
+                p.displayName.toLowerCase().includes(lower) ||
+                p.name.toLowerCase().includes(lower) ||
+                p.description.toLowerCase().includes(lower)
+            )
+          : category.packages;
+
+        const allSelected = filteredPkgs.every((p) => selected.has(p.name));
+        for (const p of filteredPkgs) {
+          if (allSelected) {
+            selected.delete(p.name);
+          } else {
+            selected.add(p.name);
+          }
+        }
+        render();
+      }
+    });
+
+    // ── Event: Search ───────────────────────────
+    searchInput.addEventListener("input", function () {
+      searchQuery = searchInput.value.trim();
+      render();
+    });
+
+    searchClear.addEventListener("click", function () {
+      searchInput.value = "";
+      searchQuery = "";
+      searchInput.focus();
+      render();
+    });
+
+    // ── Event: Clear All ────────────────────────
+    clearAllBtn.addEventListener("click", function () {
+      selected.clear();
+      render();
+    });
+
+    // ── Event: Copy ─────────────────────────────
+    let copyTimeout = null;
+    copyBtn.addEventListener("click", async function () {
+      const cmd = commandText.textContent;
+      if (!cmd) return;
+
+      try {
+        await navigator.clipboard.writeText(cmd);
+      } catch {
+        // Fallback: prompt
+        prompt("Copy this command:", cmd);
+        return;
+      }
+
+      copyIcon.style.display = "none";
+      checkIcon.style.display = "inline";
+      copyLabel.textContent = "Copied";
+
+      clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(function () {
+        copyIcon.style.display = "inline";
+        checkIcon.style.display = "none";
+        copyLabel.textContent = "Copy";
+      }, 2000);
+    });
+
+    // ── Initial Render ──────────────────────────
+    render();
+  </script>
+
+</body>
+</html>

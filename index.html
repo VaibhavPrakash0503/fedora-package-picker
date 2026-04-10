@@ -493,6 +493,63 @@
     .bottom-spacer.active {
       height: 120px;
     }
+
+    .graph-panel {
+      max-width: 960px;
+      margin: 0 auto 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+
+    .graph-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 0.75rem;
+    }
+
+    .graph-panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .graph-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .graph-refresh-btn {
+      background: var(--primary-bg);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .graph-refresh-btn:hover {
+      background: rgba(47, 129, 247, 0.16);
+    }
+
+    .graph-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .graph-canvas {
+      width: 100%;
+      height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+    }
   </style>
 </head>
 <body>
@@ -527,6 +584,17 @@
 
   <!-- ── Main Content ────────────────────────── -->
   <main>
+    <section class="graph-panel">
+      <div class="graph-panel-header">
+        <div>
+          <h2>Graph Visualization</h2>
+          <p class="graph-note">Live graph from Neo4j nodes and relationships</p>
+        </div>
+        <button class="graph-refresh-btn" id="graphRefreshBtn" type="button">Refresh Graph</button>
+      </div>
+      <p class="graph-status" id="graphStatus">Loading graph...</p>
+      <div class="graph-canvas" id="graphCanvas"></div>
+    </section>
     <div class="categories" id="categoriesContainer"></div>
     <div class="empty-state" id="emptyState">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -555,6 +623,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
   <script>
     // ── Package Data ────────────────────────────
     const packageCategories = [
@@ -657,9 +726,84 @@
     const selectedBadge = document.getElementById("selectedBadge");
     const clearAllBtn = document.getElementById("clearAllBtn");
     const bottomSpacer = document.getElementById("bottomSpacer");
+    const graphCanvas = document.getElementById("graphCanvas");
+    const graphStatus = document.getElementById("graphStatus");
+    const graphRefreshBtn = document.getElementById("graphRefreshBtn");
 
     // ── Checkmark SVG for checkbox ──────────────
     const checkSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    let graphNetwork = null;
+
+    async function loadGraphVisualization() {
+      graphStatus.textContent = "Loading graph...";
+      try {
+        const response = await fetch("/api/graph");
+        if (!response.ok) throw new Error("Failed to fetch graph data");
+        const data = await response.json();
+        const nodes = (data.graph && data.graph.nodes) || [];
+        const edges = (data.graph && data.graph.edges) || [];
+        renderGraph(nodes, edges);
+        graphStatus.textContent = `Showing ${nodes.length} nodes and ${edges.length} relationships`;
+      } catch (error) {
+        graphStatus.textContent = `Graph load failed: ${error.message}`;
+      }
+    }
+
+    function renderGraph(nodes, edges) {
+      if (!window.vis) {
+        graphStatus.textContent = "Graph library failed to load.";
+        return;
+      }
+
+      const data = {
+        nodes: new vis.DataSet(
+          nodes.map((node) => ({
+            id: node.id,
+            label: node.label,
+            group: node.group
+          }))
+        ),
+        edges: new vis.DataSet(
+          edges.map((edge) => ({
+            from: edge.from,
+            to: edge.to,
+            label: edge.label,
+            arrows: "to"
+          }))
+        )
+      };
+
+      const options = {
+        nodes: {
+          shape: "dot",
+          size: 12,
+          font: { color: "#e0e6ed", size: 12 },
+          borderWidth: 1
+        },
+        edges: {
+          color: "#4a5568",
+          smooth: true,
+          font: { color: "#9aa4b2", size: 10 }
+        },
+        groups: {
+          Category: { color: { background: "#2f81f7", border: "#2f81f7" } },
+          Package: { color: { background: "#22c55e", border: "#22c55e" } },
+          Collection: { color: { background: "#f59e0b", border: "#f59e0b" } }
+        },
+        physics: {
+          enabled: true,
+          barnesHut: { springLength: 90 }
+        },
+        interaction: {
+          hover: true
+        }
+      };
+
+      if (graphNetwork) {
+        graphNetwork.destroy();
+      }
+      graphNetwork = new vis.Network(graphCanvas, data, options);
+    }
 
     // ── Render ──────────────────────────────────
     function render() {
@@ -832,6 +976,10 @@
       render();
     });
 
+    graphRefreshBtn.addEventListener("click", function () {
+      loadGraphVisualization();
+    });
+
     // ── Event: Copy ─────────────────────────────
     let copyTimeout = null;
     copyBtn.addEventListener("click", async function () {
@@ -860,6 +1008,7 @@
 
     // ── Initial Render ──────────────────────────
     render();
+    loadGraphVisualization();
   </script>
 
 </body>

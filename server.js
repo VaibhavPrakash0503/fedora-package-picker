@@ -42,6 +42,11 @@ app.get('/api/graph', async (req, res) => {
       MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package)
       RETURN collect(related.name) AS related
     `);
+    const graphResult = await session.run(`
+      MATCH (n)-[r]->(m)
+      RETURN n, r, m
+      LIMIT 200
+    `);
 
     const labels = labelsResult.records.map((r) => ({
       label: r.get('label'),
@@ -54,6 +59,32 @@ app.get('/api/graph', async (req, res) => {
     }));
 
     const gitRelated = traversalResult.records[0]?.get('related') || [];
+    const nodeMap = new Map();
+    const edges = [];
+
+    for (const record of graphResult.records) {
+      const n = record.get('n');
+      const m = record.get('m');
+      const r = record.get('r');
+
+      for (const node of [n, m]) {
+        if (!nodeMap.has(node.elementId)) {
+          const props = node.properties || {};
+          const labelsList = node.labels || [];
+          nodeMap.set(node.elementId, {
+            id: node.elementId,
+            label: props.displayName || props.label || props.name || labelsList[0] || 'Node',
+            group: labelsList[0] || 'Node'
+          });
+        }
+      }
+
+      edges.push({
+        from: r.startNodeElementId,
+        to: r.endNodeElementId,
+        label: r.type
+      });
+    }
 
     res.json({
       isGraphDatabase: true,
@@ -64,6 +95,10 @@ app.get('/api/graph', async (req, res) => {
           query: "MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package) RETURN related",
           result: gitRelated
         }
+      },
+      graph: {
+        nodes: Array.from(nodeMap.values()),
+        edges
       }
     });
   } catch (error) {

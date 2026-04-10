@@ -27,23 +27,21 @@ app.get('/api/health', (req, res) => {
 app.get('/api/graph', async (req, res) => {
   const session = driver.session();
   try {
-    const [labelsResult, relTypesResult, traversalResult] = await Promise.all([
-      session.run(`
-        MATCH (n)
-        UNWIND labels(n) AS label
-        RETURN label, count(*) AS count
-        ORDER BY count DESC
-      `),
-      session.run(`
-        MATCH ()-[r]->()
-        RETURN type(r) AS relationship, count(*) AS count
-        ORDER BY count DESC
-      `),
-      session.run(`
-        MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package)
-        RETURN collect(related.name) AS related
-      `)
-    ]);
+    const labelsResult = await session.run(`
+      MATCH (n)
+      UNWIND labels(n) AS label
+      RETURN label, count(*) AS count
+      ORDER BY count DESC
+    `);
+    const relTypesResult = await session.run(`
+      MATCH ()-[r]->()
+      RETURN type(r) AS relationship, count(*) AS count
+      ORDER BY count DESC
+    `);
+    const traversalResult = await session.run(`
+      MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package)
+      RETURN collect(related.name) AS related
+    `);
 
     const labels = labelsResult.records.map((r) => ({
       label: r.get('label'),

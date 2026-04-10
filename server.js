@@ -23,6 +23,58 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', db: 'neo4j' });
 });
 
+// Graph proof endpoint: shows nodes, relationships, and traversal
+app.get('/api/graph-proof', async (req, res) => {
+  const session = driver.session();
+  try {
+    const [labelsResult, relTypesResult, traversalResult] = await Promise.all([
+      session.run(`
+        MATCH (n)
+        UNWIND labels(n) AS label
+        RETURN label, count(*) AS count
+        ORDER BY count DESC
+      `),
+      session.run(`
+        MATCH ()-[r]->()
+        RETURN type(r) AS relationship, count(*) AS count
+        ORDER BY count DESC
+      `),
+      session.run(`
+        MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package)
+        RETURN collect(related.name) AS related
+      `)
+    ]);
+
+    const labels = labelsResult.records.map((r) => ({
+      label: r.get('label'),
+      count: Number(r.get('count'))
+    }));
+
+    const relationships = relTypesResult.records.map((r) => ({
+      relationship: r.get('relationship'),
+      count: Number(r.get('count'))
+    }));
+
+    const gitRelated = traversalResult.records[0]?.get('related') || [];
+
+    res.json({
+      isGraphDatabase: true,
+      proof: {
+        nodeLabels: labels,
+        relationshipTypes: relationships,
+        traversalExample: {
+          query: "MATCH (p:Package {name: 'git'})-[:PAIRS_WITH]->(related:Package) RETURN related",
+          result: gitRelated
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  } finally {
+    await session.close();
+  }
+});
+
 // Get all categories with packages
 app.get('/api/packages', async (req, res) => {
   const session = driver.session();

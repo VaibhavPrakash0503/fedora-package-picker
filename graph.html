@@ -4,82 +4,128 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Package Graph</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0d1117;
-      --bg-card: #151b23;
-      --border: #252d3a;
-      --text: #e0e6ed;
-      --muted: #7b8694;
+      --bg: #070b12;
+      --bg-soft: rgba(18, 25, 36, 0.72);
+      --border: rgba(106, 124, 150, 0.25);
+      --text: #e8eef9;
+      --muted: #9ba8ba;
       --primary: #2f81f7;
-      --primary-bg: rgba(47, 129, 247, 0.08);
-      --primary-border: rgba(47, 129, 247, 0.3);
-      --radius: 8px;
-      --font-sans: Inter, system-ui, -apple-system, sans-serif;
+      --primary-bg: rgba(47, 129, 247, 0.16);
+      --primary-border: rgba(47, 129, 247, 0.45);
+      --radius: 12px;
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-sans);
+      overflow: hidden;
     }
 
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+    .app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(47, 129, 247, 0.18), transparent 34%),
+        radial-gradient(circle at 80% 90%, rgba(34, 197, 94, 0.12), transparent 32%),
+        var(--bg);
+    }
 
-    .top {
+    .topbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 2;
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(8px);
     }
 
-    .title { font-size: 1.35rem; font-weight: 600; margin: 0; }
-    .sub { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+    .title { font-size: 1.15rem; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
+    .sub { margin: 3px 0 0; color: var(--muted); font-size: 0.82rem; }
 
-    .actions { display: flex; gap: 8px; }
+    .actions { display: flex; gap: 8px; flex-shrink: 0; }
     .btn {
       border: 1px solid var(--primary-border);
       background: var(--primary-bg);
       color: var(--primary);
       padding: 8px 12px;
-      border-radius: 8px;
+      border-radius: 9px;
       text-decoration: none;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: 0.15s ease;
     }
 
-    .panel {
-      background: var(--bg-card);
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(47, 129, 247, 0.24);
+    }
+
+    .stats {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      background: var(--bg-soft);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 12px;
-      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
     }
 
-    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .stat {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
+      border: 1px solid rgba(106, 124, 150, 0.2);
+      border-radius: 10px;
+      background: rgba(8, 12, 18, 0.45);
+      padding: 10px 12px;
     }
-    .stat .k { color: var(--muted); font-size: 0.8rem; margin-bottom: 3px; }
-    .stat .v { font-weight: 600; }
+    .stat .k { color: var(--muted); font-size: 0.75rem; margin-bottom: 5px; }
+    .stat .v { font-weight: 700; font-size: 0.95rem; }
+    #traversalText { font-family: var(--font-mono); font-size: 0.8rem; }
 
     #graphCanvas {
+      position: absolute;
+      inset: 0;
       width: 100%;
-      height: 640px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #0b1118;
+      height: 100%;
+      background: #070b12;
+    }
+
+    @media (max-width: 900px) {
+      .topbar { flex-direction: column; }
+      .actions { width: 100%; }
+      .btn { flex: 1; text-align: center; }
+      .stats { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
+  <div class="app">
+    <div class="topbar">
       <div>
         <h1 class="title">Package Relationship Graph</h1>
         <p class="sub">Shared-category and common-use links from Neo4j</p>
@@ -90,16 +136,12 @@
       </div>
     </div>
 
-    <div class="panel">
-      <div class="stats">
-        <div class="stat"><div class="k">Nodes</div><div class="v" id="nodesCount">-</div></div>
-        <div class="stat"><div class="k">Relationships</div><div class="v" id="edgesCount">-</div></div>
-        <div class="stat"><div class="k">Traversal Example</div><div class="v" id="traversalText">-</div></div>
-      </div>
-    </div>
+    <div id="graphCanvas"></div>
 
-    <div class="panel">
-      <div id="graphCanvas"></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Nodes</div><div class="v" id="nodesCount">-</div></div>
+      <div class="stat"><div class="k">Relationships</div><div class="v" id="edgesCount">-</div></div>
+      <div class="stat"><div class="k">Traversal Example</div><div class="v" id="traversalText">-</div></div>
     </div>
   </div>
 
@@ -145,12 +187,14 @@
         nodes: {
           shape: "dot",
           size: 11,
-          font: { color: "#e0e6ed", size: 11 }
+          font: { color: "#e8eef9", size: 11, face: "Inter" },
+          borderWidth: 1
         },
         edges: {
           smooth: true,
-          color: "#546170",
-          font: { color: "#9aa4b2", size: 10 }
+          color: "#627389",
+          font: { color: "#a9b6c6", size: 10, face: "JetBrains Mono" },
+          width: 1.3
         },
         groups: {
           Category: { color: { background: "#2f81f7", border: "#2f81f7" } },

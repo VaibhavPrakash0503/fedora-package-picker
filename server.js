@@ -50,17 +50,23 @@ app.get('/api/packages', async (req, res) => {
 
 // Search packages
 app.get('/api/search', async (req, res) => {
-  const { q } = req.query;
+  const q = String(req.query.q || '').trim();
   const session = driver.session();
   try {
+    if (!q) {
+      return res.json([]);
+    }
+
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = `(?i).*${escaped}.*`;
     const result = await session.run(`
       MATCH (p:Package)
-      WHERE p.displayName =~ '(?i).*${q}.*' 
-         OR p.description =~ '(?i).*${q}.*'
+      WHERE p.displayName =~ $regex
+         OR p.description =~ $regex
       MATCH (p)-[:BELONGS_TO]->(c:Category)
       RETURN p {.*} as package, c {.*} as category
       LIMIT 50
-    `);
+    `, { regex });
 
     const packages = result.records.map(record => ({
       ...record.get('package'),

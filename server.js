@@ -23,8 +23,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', db: 'neo4j' });
 });
 
-// Graph proof endpoint: shows nodes, relationships, and traversal
-app.get('/api/graph-proof', async (req, res) => {
+// Graph endpoint: shows nodes, relationships, and traversal
+app.get('/api/graph', async (req, res) => {
   const session = driver.session();
   try {
     const [labelsResult, relTypesResult, traversalResult] = await Promise.all([
@@ -82,8 +82,9 @@ app.get('/api/packages', async (req, res) => {
     const result = await session.run(`
       MATCH (c:Category)
       OPTIONAL MATCH (c)<-[:BELONGS_TO]-(p:Package)
-      RETURN c {.*} as category, collect(p {.*}) as packages
+      WITH c, collect(p {.*}) as packages
       ORDER BY c.order
+      RETURN c {.*} as category, packages
     `);
 
     const categories = result.records.map(record => ({

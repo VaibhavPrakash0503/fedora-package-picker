@@ -1,0 +1,30 @@
+{
+  "name": "fedora-package-picker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavPrakash0503/fedora-package-picker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/VaibhavPrakash0503/fedora-package-picker/issues"
+  },
+  "homepage": "https://github.com/VaibhavPrakash0503/fedora-package-picker#readme",
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "neo4j-driver": "^6.0.1"
+  }
+}

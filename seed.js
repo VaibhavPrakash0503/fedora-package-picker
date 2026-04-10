@@ -30,6 +30,7 @@ const packageCategories = [
       { name: "jq", displayName: "jq", description: "JSON processor for the command line" },
       { name: "wget", displayName: "wget", description: "Network file downloader" },
       { name: "curl", displayName: "curl", description: "Transfer data with URLs" },
+      { name: "git", displayName: "Git", description: "Version control system" },
       { name: "tree", displayName: "tree", description: "Directory listing in tree format" },
       { name: "ncdu", displayName: "ncdu", description: "Disk usage analyzer with ncurses" },
       { name: "ranger", displayName: "Ranger", description: "Console file manager with VI bindings" },
@@ -74,6 +75,9 @@ const packageCategories = [
       { name: "clang", displayName: "Clang", description: "C/C++/ObjC compiler" },
       { name: "python3", displayName: "Python 3", description: "Python interpreter" },
       { name: "python3-pip", displayName: "pip", description: "Python package manager" },
+      { name: "bat", displayName: "bat", description: "Cat clone with syntax highlighting" },
+      { name: "wget", displayName: "wget", description: "Network file downloader" },
+      { name: "curl", displayName: "curl", description: "Transfer data with URLs" },
       { name: "nodejs", displayName: "Node.js", description: "JavaScript runtime" },
       { name: "npm", displayName: "npm", description: "Node package manager" },
       { name: "rust", displayName: "Rust", description: "Rust toolchain via rustup" },
@@ -103,12 +107,10 @@ async function seedDatabase() {
 
       // Create category
       await session.run(
-        `CREATE (c:Category {
-          id: $id,
-          label: $label,
-          description: $description,
-          order: $order
-        })`,
+        `MERGE (c:Category {id: $id})
+         SET c.label = $label,
+             c.description = $description,
+             c.order = $order`,
         {
           id: category.id,
           label: category.label,
@@ -121,11 +123,10 @@ async function seedDatabase() {
       for (const pkg of category.packages) {
         await session.run(
           `MATCH (c:Category {id: $catId})
-           CREATE (p:Package {
-             name: $name,
-             displayName: $displayName,
-             description: $description
-           })-[:BELONGS_TO]->(c)`,
+           MERGE (p:Package {name: $name})
+           ON CREATE SET p.displayName = $displayName, p.description = $description
+           ON MATCH SET p.displayName = $displayName, p.description = $description
+           MERGE (p)-[:BELONGS_TO]->(c)`,
           {
             catId: category.id,
             name: pkg.name,
@@ -136,7 +137,7 @@ async function seedDatabase() {
       }
     }
 
-    // Create some package relationships (packages that pair well)
+    // Create package relationships (pairs + common CLI/tooling links)
     console.log('🔗 Creating package relationships...');
     const pairings = [
       { from: 'git', to: 'vim-enhanced' },
@@ -147,23 +148,45 @@ async function seedDatabase() {
       { from: 'rust', to: 'cargo' },
       { from: 'golang', to: 'git' },
       { from: 'docker', to: 'git' },
-      { from: 'python3', to: 'venv' },
+    ];
+
+    const commonLinks = [
+      { from: 'bat', to: 'git', reason: 'command-line-workflow' },
+      { from: 'curl', to: 'git', reason: 'network-and-cli-tooling' },
+      { from: 'wget', to: 'git', reason: 'download-and-cli-tooling' },
+      { from: 'bat', to: 'curl', reason: 'terminal-utilities' },
+      { from: 'bat', to: 'wget', reason: 'terminal-utilities' },
+      { from: 'curl', to: 'wget', reason: 'network-tools' },
+      { from: 'git', to: 'tmux', reason: 'terminal-development' },
     ];
 
     for (const pair of pairings) {
-      try {
-        await session.run(
-          `MATCH (p1:Package {name: $from}), (p2:Package {name: $to})
-           CREATE (p1)-[:PAIRS_WITH]->(p2)`,
-          { from: pair.from, to: pair.to }
-        );
-      } catch (e) {
-        // Skip if package not found
-      }
+      await session.run(
+        `MATCH (p1:Package {name: $from}), (p2:Package {name: $to})
+         MERGE (p1)-[:PAIRS_WITH]->(p2)`,
+        { from: pair.from, to: pair.to }
+      );
     }
 
+    for (const link of commonLinks) {
+      await session.run(
+        `MATCH (p1:Package {name: $from}), (p2:Package {name: $to})
+         MERGE (p1)-[r:COMMON_USE]->(p2)
+         SET r.reason = $reason`,
+        link
+      );
+    }
+
+    const summary = await session.run(`
+      MATCH (p:Package)
+      WITH count(DISTINCT p) AS packageCount
+      MATCH ()-[r]->()
+      RETURN packageCount, count(r) AS relationshipCount
+    `);
+    const row = summary.records[0];
     console.log('✅ Database seeded successfully!');
-    console.log(`📦 Total packages: ${packageCategories.reduce((sum, cat) => sum + cat.packages.length, 0)}`);
+    console.log(`📦 Total unique packages: ${row.get('packageCount').toNumber()}`);
+    console.log(`🔗 Total relationships: ${row.get('relationshipCount').toNumber()}`);
   } catch (error) {
     console.error('❌ Error seeding database:', error);
   } finally {

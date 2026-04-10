@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Package Graph</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #151b23;
+      --border: #252d3a;
+      --text: #e0e6ed;
+      --muted: #7b8694;
+      --primary: #2f81f7;
+      --primary-bg: rgba(47, 129, 247, 0.08);
+      --primary-border: rgba(47, 129, 247, 0.3);
+      --radius: 8px;
+      --font-sans: Inter, system-ui, -apple-system, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .title { font-size: 1.35rem; font-weight: 600; margin: 0; }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+    .actions { display: flex; gap: 8px; }
+    .btn {
+      border: 1px solid var(--primary-border);
+      background: var(--primary-bg);
+      color: var(--primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .stat .k { color: var(--muted); font-size: 0.8rem; margin-bottom: 3px; }
+    .stat .v { font-weight: 600; }
+
+    #graphCanvas {
+      width: 100%;
+      height: 640px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1118;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 class="title">Package Relationship Graph</h1>
+        <p class="sub">Shared-category and common-use links from Neo4j</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/">Back to Picker</a>
+        <button class="btn" id="refreshBtn" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="stats">
+        <div class="stat"><div class="k">Nodes</div><div class="v" id="nodesCount">-</div></div>
+        <div class="stat"><div class="k">Relationships</div><div class="v" id="edgesCount">-</div></div>
+        <div class="stat"><div class="k">Traversal Example</div><div class="v" id="traversalText">-</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="graphCanvas"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <script>
+    const graphCanvas = document.getElementById("graphCanvas");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const nodesCount = document.getElementById("nodesCount");
+    const edgesCount = document.getElementById("edgesCount");
+    const traversalText = document.getElementById("traversalText");
+    let network = null;
+
+    async function loadGraph() {
+      const res = await fetch("/api/graph");
+      const data = await res.json();
+      const nodes = (data.graph && data.graph.nodes) || [];
+      const edges = (data.graph && data.graph.edges) || [];
+
+      nodesCount.textContent = nodes.length;
+      edgesCount.textContent = edges.length;
+
+      const traversal = data.proof && data.proof.traversalExample && data.proof.traversalExample.result
+        ? data.proof.traversalExample.result
+        : [];
+      traversalText.textContent = traversal.length ? `git -> ${traversal.join(", ")}` : "No links";
+
+      const visData = {
+        nodes: new vis.DataSet(nodes.map((n) => ({
+          id: n.id,
+          label: n.label,
+          group: n.group
+        }))),
+        edges: new vis.DataSet(edges.map((e) => ({
+          from: e.from,
+          to: e.to,
+          label: e.label,
+          title: e.title || "",
+          arrows: "to"
+        })))
+      };
+
+      const options = {
+        nodes: {
+          shape: "dot",
+          size: 11,
+          font: { color: "#e0e6ed", size: 11 }
+        },
+        edges: {
+          smooth: true,
+          color: "#546170",
+          font: { color: "#9aa4b2", size: 10 }
+        },
+        groups: {
+          Category: { color: { background: "#2f81f7", border: "#2f81f7" } },
+          Package: { color: { background: "#22c55e", border: "#22c55e" } },
+          Collection: { color: { background: "#f59e0b", border: "#f59e0b" } }
+        },
+        physics: {
+          enabled: true,
+          barnesHut: { springLength: 95 }
+        },
+        interaction: { hover: true }
+      };
+
+      if (network) {
+        network.destroy();
+      }
+      network = new vis.Network(graphCanvas, visData, options);
+    }
+
+    refreshBtn.addEventListener("click", () => loadGraph());
+    loadGraph();
+  </script>
+</body>
+</html>

@@ -82,7 +82,8 @@ app.get('/api/graph', async (req, res) => {
       edges.push({
         from: r.startNodeElementId,
         to: r.endNodeElementId,
-        label: r.type
+        label: r.type,
+        title: r.properties && r.properties.reason ? r.properties.reason : ""
       });
     }
 
@@ -232,6 +233,11 @@ app.get('/api/collections', async (req, res) => {
 // Serve index.html for root path
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Serve graph page
+app.get('/graph', (req, res) => {
+  res.sendFile(path.join(__dirname, 'graph.html'));
 });
 
 const PORT = process.env.PORT || 3000;
